@@ -2,6 +2,7 @@ RSCODE version 1.3
 
 See the files
 
+```
 config.doc 	documentation of some compile time parameters
 rs.doc 		overview of the Reed-Solomon coding program
 rs.man		a man page, slightly outdated at this point
@@ -12,7 +13,7 @@ Makefile	should work on a Sun system, may require GNU make.
 
 Henry Minsky
 hqm@alum.mit.edu
-
+```
 
 Hi. The RSCODE project is an implementation of a Reed-Solomon error correction algorithm. Error correcting codes are marvelous jewels of mathematics and algorithms, providing an almost supernatural ability to recover good data from a corrupted channel.
 This implementation of the Reed-Solomon codes provide convenient 'byte-sized' block coding which is convenient for adding protection to data which is stored as eight-bit bytes (i.e., most common computer data).
@@ -34,7 +35,7 @@ Example use of the rscode library
 
 
 
-
+```
  * (c) Henry Minsky (hqm@alum.mit.edu) 1991-2009
  *
  * This software library is licensed under terms of the GNU GENERAL
@@ -44,5 +45,6 @@ Example use of the rscode library
  * contact author for details.
  *
  * Source code is available at http://rscode.sourceforge.net
+ ```
 
 
