@@ -1,25 +1,6 @@
 /* Example use of Reed-Solomon library 
  *
- * Copyright Henry Minsky (hqm@alum.mit.edu) 1991-2009
- *
- * This software library is licensed under terms of the GNU GENERAL
- * PUBLIC LICENSE
- *
- * RSCODE is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * RSCODE is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Rscode.  If not, see <http://www.gnu.org/licenses/>.
-
- * Commercial licensing is available under a separate license, please
- * contact author for details.
+ * (C) Universal Access Inc. 1996
  *
  * This same code demonstrates the use of the encodier and 
  * decoder/error-correction routines. 
@@ -44,10 +25,16 @@
  
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include <stdlib.h>
 #include "ecc.h"
- 
-unsigned char msg[] = "Nervously I loaded the twin ducks aboard the revolving pl\
-atform.";
+
+unsigned char msg[] = {0x00,  0x01,  0x02,  0x03,  0x04,
+                       0x05,  0x06,  0x07,  0x08,  0x09,
+                       0x0A,  0x0B,  0x0C,  0x0D,  0x0E,
+                       0x0F,  0x10,  0x11,  0x12,  0x13, 
+                       0x14,  0x15,  0x16,  0x17,  0x18,
+                       0x19,  0x1A,  0x1B};
 unsigned char codeword[256];
  
 /* Some debugging routines to introduce errors or erasures
@@ -73,6 +60,16 @@ byte_erasure (int loc, unsigned char dst[], int cwsize, int erasures[])
 }
 
 
+void
+print_word (int n, unsigned char *data) {
+  int i;
+  for (i=0; i < n; i++) {
+    printf ("%02X ", data[i]);
+  }
+  printf("\n");
+}
+
+
 int
 main (int argc, char *argv[])
 {
@@ -86,43 +83,91 @@ main (int argc, char *argv[])
  
   /* ************** */
  
-  /* Encode data into codeword, adding NPAR parity bytes */
-  encode_data(msg, sizeof(msg), codeword);
- 
-  printf("Encoded data is: \"%s\"\n", codeword);
- 
 #define ML (sizeof (msg) + NPAR)
 
-
   /* Add one error and two erasures */
-  byte_err(0x35, 3, codeword);
 
-  byte_err(0x23, 17, codeword);
-  byte_err(0x34, 19, codeword);
-
-
-  printf("with some errors: \"%s\"\n", codeword);
 
   /* We need to indicate the position of the erasures.  Eraseure
      positions are indexed (1 based) from the end of the message... */
 
-  erasures[nerasures++] = ML-17;
-  erasures[nerasures++] = ML-19;
-
+  /* 
+     erasures[nerasures++] = ML-17;
+     erasures[nerasures++] = ML-19;
+  */
  
   /* Now decode -- encoded codeword size must be passed */
   decode_data(codeword, ML);
 
-  /* check if syndrome is all zeros */
-  if (check_syndrome () != 0) {
-    correct_errors_erasures (codeword, 
-			     ML,
-			     nerasures, 
-			     erasures);
- 
-    printf("Corrected codeword: \"%s\"\n", codeword);
+  srand(time(NULL));   // Initialization, should only be called once.
+
+  int fails = 0;
+  for (int i = 0; i < 10; i++) {
+      int j;
+      // make random msg data
+      for (j=0; j<sizeof(msg); j++) {
+          msg[j] = rand() % 256;
+      }
+      printf("msg =");
+      print_word(28, msg);
+      encode_data(msg, sizeof(msg), codeword);
+      printf("encoded data:\n");
+      print_word(ML, codeword);
+
+      // add two random errors to codeword
+      unsigned char r = rand() % 256; 
+      int rloc = rand() % ML; 
+      codeword[rloc] = r;
+
+      unsigned char r2 = rand() % 256; 
+      int rloc2 = rand() % ML; 
+      codeword[rloc2] = r2;
+
+      printf("encoded data with two errors: %d @ loc %d, %d @ loc %d\n", r, rloc, r2, rloc2);
+      print_word(ML, codeword);
+
+      /* Now decode -- encoded codeword size must be passed */
+      decode_data(codeword, ML);
+
+      { 
+          int syndrome = check_syndrome ();
+          printf("syndrome = %d\n",syndrome);
+          /* check if syndrome is all zeros */
+          if (syndrome == 0) {
+              // no errs detected, codeword payload should match message  
+              for (int k=0; k < sizeof(msg); k++) {
+                  if (msg[k] != codeword[k]) {
+                      printf("#### FAILURE TO DETECT ERROR @ %d: %d != %d\n", k, msg[k], codeword[k]);
+                      fails++;
+                  }
+              }
+
+          } else {
+              printf("nonzero syndrome, attempting correcting errors\n");
+              int result = 0;
+              result =correct_errors_erasures (codeword, 
+                                               ML,
+                                               nerasures, 
+                                               erasures);
+              printf("correct_errors_erasures = %d\n", result);
+              print_word(28, codeword);
+              int k;
+              for (k=0; k < sizeof(msg); k++) {
+                  if (msg[k] != codeword[k]) {
+                      printf("##### FAILURE TO CORRECT ERROR @ %d: %d != %d\n", k, msg[k], codeword[k]);
+                      fails++;
+                  }
+              }
+          }
+      }
   }
- 
+
+  if (fails == 0) {
+      printf("\n\n All Tests Passed: No failures to correct codeword\n");
+  } else {
+      printf("### ERROR Algorithm failed to correct codeword %d times!!!\n", fails);
+  }
+
   exit(0);
 }
 
